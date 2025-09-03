@@ -1,65 +1,83 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SCI Fan Deck — Draggable + Flick Physics (Click Preview Only)</title>
-  <style>
-    :root {
-      --btn:#0a26ff; --btn-hover:#081bcc;
-      --wrap-max:1100px;
-      --card-w:190px; --card-h:310px; --card-r:12px;
-      --spring:cubic-bezier(.16,.84,.24,1.10);
-      --spring-fast:cubic-bezier(.15,.9,.1,1.05);
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:#fff; display:flex; justify-content:center; align-items:flex-start; min-height:100vh;
-    }
-    .wrap{width:min(92vw,var(--wrap-max)); margin:80px auto; display:flex; flex-direction:column; align-items:center; gap:20px;}
-    .nav-buttons{display:flex; gap:12px; flex-wrap:wrap; justify-content:center; position:relative; z-index:3000;}
-    button{
-      border:0; background:var(--btn); color:#fff; padding:10px 18px; border-radius:10px; font-weight:700; cursor:pointer;
-      transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
-      box-shadow:0 8px 18px rgba(26,56,255,.18), 0 1px 2px rgba(0,0,0,.08);
-    }
-    button:hover{background:var(--btn-hover); transform:translateY(-1px)}
-    button:active{transform:translateY(0)}
-    #fan-container{
-      position:relative; width:min(78vmin,780px); height:min(78vmin,780px); perspective:1200px; z-index:100;
-      filter:drop-shadow(0 20px 30px rgba(0,0,0,.10)) drop-shadow(0 2px 6px rgba(0,0,0,.06));
-      touch-action:none;
-    }
-    .rivet{
-      position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-      width:34px; height:34px; border-radius:50%;
-      background:radial-gradient(circle at 35% 35%, #fff 0 25%, #d9dde4 26% 50%, #aeb5c0 51% 70%, #7f8794 71% 86%, #cfd4dc 87% 100%);
-      box-shadow:inset 0 2px 4px rgba(255,255,255,.8), inset 0 -3px 6px rgba(0,0,0,.25), 0 2px 8px rgba(0,0,0,.18);
-      z-index:1000; pointer-events:none;
-    }
-    .swatch{
-      position:absolute; top:50%; left:50%;
-      width:var(--card-w); height:var(--card-h); transform-origin:0% 100%;
-      --tx:0px; --ty:0px; --angle:0deg;
-      transform:translate(var(--tx),calc(-100% + var(--ty))) rotate(var(--angle));
-      border-radius:var(--card-r); display:flex; align-items:flex-end; padding:18px 16px;
-      color:#fff; font-weight:800; letter-spacing:.2px; text-shadow:0 1px 3px rgba(0,0,0,.45);
-      transition:transform .6s var(--spring), filter .25s ease, z-index .2s ease;
-      user-select:none; background-image:linear-gradient(to bottom,rgba(255,255,255,.16),rgba(255,255,255,0) 40%),linear-gradient(to top,rgba(0,0,0,.08),rgba(0,0,0,0) 60%);
-      background-blend-mode:overlay,normal; touch-action:none; cursor:grab;
-    }
-    .swatch.dragging{cursor:grabbing; transition:filter .25s ease, z-index .2s ease;}
-    .swatch span{display:block; font-size:14px; opacity:.95; color:#fff;}
-    .is-top{filter:drop-shadow(0 16px 20px rgba(20,28,36,.22)) drop-shadow(0 3px 6px rgba(20,28,36,.12));}
-    .preview{position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:5000;}
-    .preview.open{display:flex;}
-    .preview-box{width:min(92vw,520px); border-radius:14px; overflow:hidden; box-shadow:0 12px 40px rgba(0,0,0,.35); background:#fff;}
-    .preview-color{height:260px;}
-    .preview-meta{padding:16px; display:flex; align-items:center; justify-content:space-between; font-weight:800;}
-    .close-x{border:0; background:#111; color:#fff; padding:8px 12px; border-radius:10px; cursor:pointer;}
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SCI Fan Deck — Fluid, Real Fan Behavior (v2)</title>
+<style>
+  :root{
+    --btn:#0a26ff; --btn-hover:#081bcc;
+    --wrap-max:1100px;
+    --card-w:190px; --card-h:310px; --card-r:12px;
+    --spring:cubic-bezier(.16,.84,.24,1.10);
+    --spring-fast:cubic-bezier(.15,.9,.1,1.05);
+    --spread:270;   /* total degrees of fan */
+    --offset:-135;  /* center the fan (-spread/2) */
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    background:#fff; display:flex; justify-content:center; align-items:flex-start; min-height:100vh;
+  }
+  .wrap{width:min(92vw,var(--wrap-max)); margin:80px auto; display:flex; flex-direction:column; align-items:center; gap:20px;}
+  .nav-buttons{display:flex; gap:12px; flex-wrap:wrap; justify-content:center; position:relative; z-index:3000;}
+  button{
+    border:0; background:var(--btn); color:#fff; padding:10px 18px; border-radius:10px; font-weight:700; cursor:pointer;
+    transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
+    box-shadow:0 8px 18px rgba(26,56,255,.18), 0 1px 2px rgba(0,0,0,.08);
+  }
+  button:hover{background:var(--btn-hover); transform:translateY(-1px)}
+  button:active{transform:translateY(0)}
+  #fan-container{
+    position:relative; width:min(78vmin,780px); height:min(78vmin,780px); perspective:1200px; z-index:100;
+    filter:drop-shadow(0 20px 30px rgba(0,0,0,.10)) drop-shadow(0 2px 6px rgba(0,0,0,.06));
+    touch-action:none;
+  }
+  .rivet{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:34px; height:34px; border-radius:50%;
+    background:radial-gradient(circle at 35% 35%, #fff 0 25%, #d9dde4 26% 50%, #aeb5c0 51% 70%, #7f8794 71% 86%, #cfd4dc 87% 100%);
+    box-shadow:inset 0 2px 4px rgba(255,255,255,.8), inset 0 -3px 6px rgba(0,0,0,.25), 0 2px 8px rgba(0,0,0,.18);
+    z-index:1000; pointer-events:none;
+  }
+
+  .swatch{
+    position:absolute; top:50%; left:50%;
+    width:var(--card-w); height:var(--card-h); transform-origin:0% 100%;
+    --tx:0px; --ty:0px; --angle:0deg;
+    transform:translate(var(--tx),calc(-100% + var(--ty))) rotate(var(--angle));
+    border-radius:var(--card-r); display:flex; align-items:flex-end; padding:18px 16px;
+    color:#fff; font-weight:800; letter-spacing:.2px; text-shadow:0 1px 3px rgba(0,0,0,.45);
+    transition:transform .55s var(--spring), filter .25s ease, z-index .2s ease;
+    user-select:none; background-image:
+      linear-gradient(to bottom,rgba(255,255,255,.16),rgba(255,255,255,0) 40%),
+      linear-gradient(to top,rgba(0,0,0,.08),rgba(0,0,0,0) 60%);
+    background-blend-mode:overlay,normal; touch-action:none; cursor:grab;
+  }
+  .swatch.dragging{
+    cursor:grabbing;
+    transition:filter .25s ease, z-index .2s ease; /* live drag = no transform easing */
+  }
+  .swatch.swaying{
+    transition:transform .15s ease-out; /* quick follow for neighbors */
+  }
+  .swatch span{display:block; font-size:14px; opacity:.95; color:#fff;}
+  .is-top{filter:drop-shadow(0 16px 20px rgba(20,28,36,.22)) drop-shadow(0 3px 6px rgba(20,28,36,.12));}
+
+  /* Preview popup */
+  .preview{position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:5000;}
+  .preview.open{display:flex;}
+  .preview-box{width:min(92vw,520px); border-radius:14px; overflow:hidden; box-shadow:0 12px 40px rgba(0,0,0,.35); background:#fff;}
+  .preview-color{height:260px;}
+  .preview-meta{padding:16px; display:flex; align-items:center; justify-content:space-between; font-weight:800;}
+  .close-x{border:0; background:#111; color:#fff; padding:8px 12px; border-radius:10px; cursor:pointer;}
+
+  @media (max-width:720px){
+    #fan-container{ width:min(88vmin,560px); height:min(88vmin,560px) }
+    :root{ --card-w:150px; --card-h:250px; --card-r:10px; }
+  }
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -72,6 +90,7 @@
   <div id="fan-container"><div class="rivet"></div></div>
 </div>
 
+<!-- preview overlay -->
 <div class="preview" id="preview">
   <div class="preview-box">
     <div class="preview-color" id="previewColor"></div>
@@ -83,28 +102,271 @@
 </div>
 
 <script>
+/* ---- 44 colors ---- */
 const colors=[{name:"Red",code:"316",hex:"#b11624"},{name:"Terra Cotta",code:"376",hex:"#78140c"},{name:"Burgundy",code:"375",hex:"#460013"},{name:"Orange",code:"317",hex:"#f07317"},{name:"Yellow",code:"330",hex:"#f6c431"},{name:"Dark Yellow",code:"331",hex:"#e3a100"},{name:"Blue",code:"915",hex:"#143d74"},{name:"Pale Blue",code:"521",hex:"#345a66"},{name:"Deep Blue",code:"353",hex:"#345a66"},{name:"Medium Blue",code:"360",hex:"#6497b4"},{name:"Aqua",code:"517",hex:"#17665f"},{name:"Green",code:"453",hex:"#286e1b"},{name:"Lime Green",code:"952",hex:"#86b900"},{name:"Light Green",code:"446",hex:"#c5cf8d"},{name:"Forest Green",code:"454",hex:"#0a3634"},{name:"Purple",code:"523",hex:"#512243"},{name:"Light Purple",code:"530",hex:"#8c90b2"},{name:"Dark Brown",code:"939",hex:"#2b1e08"},{name:"Chocolate",code:"933",hex:"#361301"},{name:"Light Brown",code:"248",hex:"#af8763"},{name:"Beige",code:"999",hex:"#d1ad95"},{name:"Pebblestone",code:"437",hex:"#ded5ad"},{name:"Almond",code:"431",hex:"#9b977b"},{name:"Black",code:"459",hex:"#000000"},{name:"Pale Grey",code:"306",hex:"#a0a6b2"},{name:"Steel Grey",code:"365",hex:"#474647"},{name:"Medium Grey",code:"663",hex:"#2d2d2d"},{name:"Charcoal",code:"470",hex:"#323637"},{name:"Grey",code:"305",hex:"#565c5b"},{name:"Light Grey",code:"885",hex:"#7c7e7d"},{name:"Silver",code:"524",hex:"#afb1ad"},{name:"Super White",code:"433",hex:"#ffffff"},{name:"Metallic Silver",code:"101",hex:"#C0C0C0"},{name:"Metallic Charcoal",code:"124",hex:"#333333"},{name:"Metallic Mocha",code:"128",hex:"#7B4F3D"},{name:"Metallic Hot Chocolate",code:"148",hex:"#5A2E2E"},{name:"Metallic Ruby",code:"135",hex:"#9B111E"},{name:"Metallic Violet Passion",code:"116",hex:"#800080"},{name:"Metallic Blue Mist",code:"112",hex:"#6699CC"},{name:"Metallic Aqua",code:"143",hex:"#00FFFF"},{name:"Metallic Olive Green",code:"113",hex:"#708238"},{name:"Metallic Orange",code:"138",hex:"#FF6600"},{name:"Metallic Copper",code:"129",hex:"#B87333"},{name:"Metallic Gold",code:"106",hex:"#d4af37"}];
 
-const fan=document.getElementById('fan-container');const preview=document.getElementById('preview');const previewColor=document.getElementById('previewColor');const previewLabel=document.getElementById('previewLabel');document.getElementById('closePreview').addEventListener('click',()=>preview.classList.remove('open'));preview.addEventListener('click',e=>{if(e.target===preview)preview.classList.remove('open');});
-const cards=[];let isOpen=false,currentTop=0;
+/* ---- constants / helpers ---- */
+const fan = document.getElementById('fan-container');
+const cards = [];
+let isOpen = false;
+let currentTop = 0;
+let slotAngles = [];
+const SPREAD = 270;
+const OFFSET = -135;
+const MIN_ANG = OFFSET;
+const MAX_ANG = OFFSET + SPREAD;
 
-function createFan(){colors.forEach((c,i)=>{const el=document.createElement('div');el.className='swatch';el.style.backgroundColor=c.hex;el.innerHTML=`${c.name}<span>#${c.code}</span>`;el.dataset.name=c.name;el.dataset.code=c.code;el.dataset.hex=c.hex;fan.appendChild(el);cards.push(el);attachDragWithClick(el,i);});layoutAngles();bringToFront(0,false);}
-function layoutAngles(){const total=cards.length,spread=270,offset=-135,step=spread/(total-1);cards.forEach((card,i)=>{const a=offset+i*step;card.style.setProperty('--angle',a+'deg');card.style.setProperty('--tx','0px');card.style.setProperty('--ty','0px');card.style.transform=`translate(var(--tx),calc(-100% + var(--ty))) rotate(${a}deg)`;});}
-function openFan(){if(isOpen)return;isOpen=true;layoutAngles();bringToFront(currentTop,true);}
-function bringToFront(i){cards.forEach((el,idx)=>{el.classList.toggle('is-top',idx===i);el.style.zIndex=(idx===i)?999:(10+idx);});}
-function nextSwatch(){currentTop=(currentTop+1)%cards.length;bringToFront(currentTop);}
-function prevSwatch(){currentTop=(currentTop-1+cards.length)%cards.length;bringToFront(currentTop);}
+function clamp(v,min,max){return Math.max(min, Math.min(max,v));}
+function normDeg(rad){let d=rad*180/Math.PI; while(d>180) d-=360; while(d<-180) d+=360; return d;}
+function getCenter(){const r=fan.getBoundingClientRect(); return {cx:r.left+r.width/2, cy:r.top+r.height/2};}
+function nearestSlot(angleDeg){let best=0,bestD=1e9; for(let i=0;i<slotAngles.length;i++){const d=Math.abs(slotAngles[i]-angleDeg); if(d<bestD){bestD=d;best=i;}} return best;}
 
-function attachDragWithClick(el,idx){let startX=0,startY=0,vx=0,vy=0,lastT=0,lastX=0,lastY=0,dragged=false,downTime=0;
-  const moveThreshold=6,clickDelay=300;let activePointerId=null;
-  const onMove=e=>{if(!el.classList.contains('dragging'))return;e.preventDefault();const t=e.timeStamp,x=e.clientX,y=e.clientY,dx=x-startX,dy=y-startY;if(!dragged&&(Math.abs(dx)>moveThreshold||Math.abs(dy)>moveThreshold))dragged=true;el.style.setProperty('--tx',dx+'px');el.style.setProperty('--ty',dy+'px');const dt=Math.max(1,t-lastT);vx=(x-lastX)/dt;vy=(y-lastY)/dt;lastT=t;lastX=x;lastY=y;};
-  const onUp=()=>{el.releasePointerCapture&&el.releasePointerCapture(activePointerId);el.classList.remove('dragging');window.removeEventListener('pointermove',onMove);window.removeEventListener('pointerup',onUp);if(!dragged&&(Date.now()-downTime)<=clickDelay){previewColor.style.background=el.dataset.hex;previewLabel.textContent=`${el.dataset.name} — #${el.dataset.code}`;preview.classList.add('open');return;}
-    if(Math.abs(vx)>0.5){if(vx>0)prevSwatch();else nextSwatch();}el.style.setProperty('--tx','0px');el.style.setProperty('--ty','0px');};
-  el.addEventListener('pointerdown',e=>{if(!isOpen)openFan();activePointerId=e.pointerId;el.setPointerCapture&&el.setPointerCapture(activePointerId);bringToFront(idx);currentTop=idx;el.classList.add('dragging');startX=e.clientX;startY=e.clientY;lastT=e.timeStamp;lastX=startX;lastY=startY;vx=vy=0;dragged=false;downTime=Date.now();window.addEventListener('pointermove',onMove,{passive:false});window.addEventListener('pointerup',onUp);});
+/* ---- Preview ---- */
+const preview = document.getElementById('preview');
+const previewColor = document.getElementById('previewColor');
+const previewLabel = document.getElementById('previewLabel');
+document.getElementById('closePreview').addEventListener('click', ()=> preview.classList.remove('open'));
+preview.addEventListener('click', e=>{ if(e.target===preview) preview.classList.remove('open'); });
+
+/* ---- Build ---- */
+function createFan(){
+  const total = colors.length;
+  const step = SPREAD / (total - 1);
+  slotAngles = Array.from({length: total}, (_,i)=> OFFSET + i*step);
+
+  for(let i=0;i<total;i++){
+    const c = colors[i];
+    const el = document.createElement('div');
+    el.className = 'swatch';
+    el.style.backgroundColor = c.hex;
+    el.innerHTML = `${c.name}<span>#${c.code}</span>`;
+    el.dataset.name=c.name; el.dataset.code=c.code; el.dataset.hex=c.hex;
+    el.dataset.slot=i; el.dataset.angle=slotAngles[i];
+    el.style.setProperty('--angle', slotAngles[i]+'deg');
+    el.style.zIndex = 10 + i;
+    fan.appendChild(el);
+    cards.push(el);
+    attachDragRotate(el, i);
+  }
+  bringToFront(0);
+  relayout();
 }
 
-window.addEventListener('load',()=>{createFan();openFan();document.getElementById('btn-open').addEventListener('click',openFan);document.getElementById('btn-close').addEventListener('click',()=>isOpen=false);document.getElementById('btn-prev').addEventListener('click',prevSwatch);document.getElementById('btn-next').addEventListener('click',nextSwatch);});
+function relayout(){
+  cards.forEach((el)=>{
+    const ang = parseFloat(el.dataset.angle);
+    el.style.setProperty('--angle', ang+'deg');
+    el.style.transform = `translate(0, -100%) rotate(${ang}deg)`;
+  });
+}
+function bringToFront(idx){
+  cards.forEach((el,i)=>{
+    el.classList.toggle('is-top', i===idx);
+    el.style.zIndex = (i===idx) ? 999 : (10 + i);
+  });
+}
+
+/* ---- Buttons: FIX open/close behavior ---- */
+function openFan(){
+  // expand back to slot positions (even after a close)
+  isOpen = true;
+  cards.forEach(el=>{
+    const slot = parseInt(el.dataset.slot,10);
+    el.dataset.angle = slotAngles[slot];
+  });
+  relayout();
+}
+function closeFan(){
+  isOpen = false;
+  cards.forEach(el=>{
+    el.dataset.angle = 0;
+    el.style.setProperty('--angle','0deg');
+    el.style.transform = `translate(0,-100%) rotate(0deg)`;
+    el.classList.remove('is-top');
+  });
+}
+
+/* ---- Neighbor sway helpers ---- */
+function applyNeighborSway(dragEl, targetAngle, startAngle, angularVelocity){
+  // Sway amount proportional to drag delta and decays with slot distance
+  const dragSlot = parseInt(dragEl.dataset.slot,10);
+  const delta = targetAngle - startAngle;  // degrees moved since drag start
+  const baseSway = delta * 0.25;           // main sway factor
+  const speedBoost = clamp(Math.abs(angularVelocity)*120, 0, 6); // pressure feel
+  const swayMax = 10; // cap
+
+  cards.forEach((el)=>{
+    if (el===dragEl) return;
+    const slot = parseInt(el.dataset.slot,10);
+    const dist = Math.abs(slot - dragSlot);
+    if (dist===0 || dist>6){ // only sway a few neighbors
+      el.classList.remove('swaying');
+      el.style.transform = `translate(0,-100%) rotate(${el.dataset.angle}deg)`;
+      return;
+    }
+    const falloff = Math.exp(-0.9*(dist-1));    // exponential decay
+    const sway = clamp((baseSway*falloff) + (Math.sign(delta)*speedBoost*falloff), -swayMax, swayMax);
+    const ang = parseFloat(el.dataset.angle);
+    el.classList.add('swaying');
+    el.style.transform = `translate(0,-100%) rotate(${ang + sway}deg)`;
+  });
+}
+function clearNeighborSway(){
+  cards.forEach(el=>{
+    el.classList.remove('swaying');
+    el.style.transform = `translate(0,-100%) rotate(${el.dataset.angle}deg)`;
+  });
+}
+
+/* ---- Drag with torsion lag + pressure feel ---- */
+function attachDragRotate(el, cardIndex){
+  let startX=0, startY=0, startAngle=0;
+  let displayedAngle=0;      // what we actually render (lagged)
+  let lastTargetAngle=0;
+  let lastT=0, lastA=0;      // for angular velocity
+  let dragged=false, downTime=0;
+  const moveThreshold=6, clickDelay=300;
+  let activePointerId=null;
+
+  const onMove = (e)=>{
+    if(!el.classList.contains('dragging')) return;
+    e.preventDefault();
+    const {cx, cy} = getCenter();
+    const x = e.clientX, y = e.clientY;
+    const raw = normDeg(Math.atan2(y - cy, x - cx));
+    const target = clamp(raw, MIN_ANG, MAX_ANG);
+
+    // torsion lag (low-pass filter toward target)
+    const stiffness = 0.75; // higher = stiffer (less lag)
+    displayedAngle = displayedAngle + (target - displayedAngle) * stiffness;
+
+    // render dragged card (no easing during drag)
+    el.style.transition = 'filter .25s ease, z-index .2s ease';
+    el.dataset.angle = displayedAngle;
+    el.style.transform = `translate(0,-100%) rotate(${displayedAngle}deg)`;
+
+    // angular velocity (deg/ms)
+    const t = e.timeStamp;
+    const dt = Math.max(1, t - lastT);
+    const angVel = (target - lastTargetAngle) / dt;
+    lastT = t; lastTargetAngle = target;
+
+    // mark as drag if pointer moved far enough
+    if(!dragged){
+      const dx=Math.abs(x-startX), dy=Math.abs(y-startY);
+      if(dx>moveThreshold || dy>moveThreshold) dragged=true;
+    }
+
+    // neighbor sway
+    applyNeighborSway(el, target, startAngle, angVel);
+    lastA = target;
+  };
+
+  const onUp = (e)=>{
+    if(!el.classList.contains('dragging')) return;
+
+    el.releasePointerCapture && el.releasePointerCapture(activePointerId);
+    el.classList.remove('dragging');
+
+    window.removeEventListener('pointermove', onMove, {passive:false});
+    window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('pointercancel', onUp);
+
+    // click → preview
+    const elapsed = Date.now() - downTime;
+    if(!dragged && elapsed<=clickDelay){
+      previewColor.style.background = el.dataset.hex;
+      previewLabel.textContent = `${el.dataset.name} — #${el.dataset.code}`;
+      preview.classList.add('open');
+      clearNeighborSway();
+      // restore animated transitions
+      el.style.transition = 'transform .55s var(--spring), filter .25s ease, z-index .2s ease';
+      return;
+    }
+
+    // drop: snap to nearest slot and reorder neighbors like a real deck
+    const current = parseFloat(el.dataset.angle);
+    const toSlot = nearestSlot(current);
+    const fromSlot = parseInt(el.dataset.slot,10);
+
+    // pressure feel overshoot: scale with last angular speed
+    const w = (lastTargetAngle - lastA) / Math.max(1, (performance.now() - lastT)); // fallback tiny calc
+    const overshoot = clamp(Math.abs(w)*180, 0, 7) * Math.sign(lastTargetAngle - startAngle); // deg
+
+    if(toSlot !== fromSlot){
+      cards.forEach((c)=>{
+        const s = parseInt(c.dataset.slot,10);
+        if(c===el){
+          c.dataset.slot = toSlot;
+          c.dataset.angle = slotAngles[toSlot];
+        }else{
+          if(fromSlot < toSlot && s>fromSlot && s<=toSlot){ c.dataset.slot = s-1; c.dataset.angle = slotAngles[s-1]; }
+          if(fromSlot > toSlot && s>=toSlot && s<fromSlot){ c.dataset.slot = s+1; c.dataset.angle = slotAngles[s+1]; }
+        }
+      });
+      cards.sort((a,b)=> parseInt(a.dataset.slot,10) - parseInt(b.dataset.slot,10));
+      bringToFront(cards.indexOf(el));
+    }else{
+      el.dataset.angle = slotAngles[fromSlot];
+    }
+
+    // restore transitions
+    cards.forEach(c=> c.style.transition = 'transform .55s var(--spring), filter .25s ease, z-index .2s ease');
+
+    // animate with a tiny overshoot using WAAPI if available
+    const finalAngle = parseFloat(el.dataset.angle);
+    clearNeighborSway();
+
+    if (el.animate){
+      const base = `translate(0,-100%)`;
+      el.animate([
+        { transform: `${base} rotate(${current}deg)` },
+        { transform: `${base} rotate(${finalAngle + overshoot}deg)` },
+        { transform: `${base} rotate(${finalAngle}deg)` },
+      ], { duration: 420, easing: 'cubic-bezier(.16,.84,.24,1.10)' });
+      // set resting transform so layout is consistent post-animation
+      el.style.transform = `${base} rotate(${finalAngle}deg)`;
+    } else {
+      // fallback: simple snap
+      relayout();
+    }
+  };
+
+  el.addEventListener('pointerdown', (e)=>{
+    if(!isOpen) openFan();
+    activePointerId = e.pointerId;
+    el.setPointerCapture && el.setPointerCapture(activePointerId);
+    bringToFront(cards.indexOf(el));
+    currentTop = cards.indexOf(el);
+    el.classList.add('dragging');
+
+    startX = e.clientX; startY = e.clientY;
+    startAngle = parseFloat(el.dataset.angle) || 0;
+    displayedAngle = startAngle;
+    lastTargetAngle = startAngle;
+    lastT = e.timeStamp; lastA = startAngle;
+    dragged=false; downTime=Date.now();
+
+    window.addEventListener('pointermove', onMove, {passive:false});
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  });
+}
+
+/* ---- Prev/Next ---- */
+function nextSwatch(){ if(!isOpen){openFan();return;} currentTop=(currentTop+1)%cards.length; bringToFront(currentTop); }
+function prevSwatch(){ if(!isOpen){openFan();return;} currentTop=(currentTop-1+cards.length)%cards.length; bringToFront(currentTop); }
+
+/* ---- Init ---- */
+window.addEventListener('load', ()=>{
+  createFan();
+  setTimeout(()=>{ openFan(); }, 60); // auto open on load
+
+  document.getElementById('btn-open').addEventListener('click', openFan);
+  document.getElementById('btn-close').addEventListener('click', closeFan);
+  document.getElementById('btn-prev').addEventListener('click', prevSwatch);
+  document.getElementById('btn-next').addEventListener('click', nextSwatch);
+});
 </script>
 </body>
 </html>
-
