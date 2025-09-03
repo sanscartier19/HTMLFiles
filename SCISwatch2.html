@@ -2,38 +2,74 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>SCI Fan Deck — 360 Spin (Deck & Individual)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>SCI Fan Deck — Responsive 360</title>
 <style>
   :root{
-    --btn:#0a26ff; --btn-hover:#081bcc;
-    --wrap-max:1100px;
-    --card-w:190px; --card-h:310px; --card-r:12px;
+    /* Base size of the circular fan area; auto-scales to screen */
+    --fan-size: min(92vw, 70vh);
+
+    /* Card geometry derived from fan size (mobile-friendly) */
+    --card-w: calc(var(--fan-size) * 0.30);
+    --card-h: calc(var(--fan-size) * 0.48);
+    --card-r: calc(var(--fan-size) * 0.02);
+
     --spring:cubic-bezier(.16,.84,.24,1.10);
-    --spread:270;         /* total degrees of fan when open */
-    --offset:-135;        /* center the fan (-spread/2) */
+    --spread:270;            /* total degrees when open */
+    --offset:-135;           /* center the fan (-spread/2) */
+
+    --btn:#0a26ff; --btn-hover:#081bcc;
+    --btn-pad-y: 8px; --btn-pad-x: 12px; --btn-radius: 10px; --btn-font: 12px;
   }
+
   *{box-sizing:border-box}
   html,body{height:100%}
   body{
-    margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-    background:#f6f7fb; display:flex; justify-content:center; align-items:flex-start; min-height:100vh;
-  }
-  .wrap{width:min(92vw,var(--wrap-max)); margin:80px auto; display:flex; flex-direction:column; align-items:center; gap:20px;}
-  .nav-buttons{display:flex; gap:12px; flex-wrap:wrap; justify-content:center; position:relative; z-index:3000;}
-  button{
-    border:0; background:var(--btn); color:#fff; padding:10px 18px; border-radius:10px; font-weight:700; cursor:pointer;
-    transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
-    box-shadow:0 8px 18px rgba(26,56,255,.18), 0 1px 2px rgba(0,0,0,.08);
-  }
-  button:hover{background:var(--btn-hover); transform:translateY(-1px)}
-  #fan-container{
-    position:relative; width:min(78vmin,780px); height:min(78vmin,780px); perspective:1200px; z-index:100;
-    filter:drop-shadow(0 24px 38px rgba(0,0,0,.12)) drop-shadow(0 4px 10px rgba(0,0,0,.06));
-    touch-action:none;
+    margin:0;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    background:#f6f7fb;
   }
 
-  /* realistic base disc */
+  /* Full-height layout that works on mobile (safe area) */
+  .wrap{
+    height:100dvh;
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-start;
+    padding: max(env(safe-area-inset-top, 12px), 12px) 12px 12px 12px;
+    gap:12px;
+    overflow:hidden; /* keep everything inside the viewport */
+  }
+
+  /* Compact toolbar floats above the fan area */
+  .toolbar{
+    display:flex; gap:8px; flex-wrap:wrap; justify-content:center;
+    z-index:3000;
+  }
+  .toolbar button{
+    border:0; background:var(--btn); color:#fff;
+    padding:var(--btn-pad-y) var(--btn-pad-x);
+    border-radius:var(--btn-radius); font-weight:700; font-size:var(--btn-font);
+    cursor:pointer;
+    transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
+    box-shadow:0 8px 18px rgba(26,56,255,.18), 0 1px 2px rgba(0,0,0,.08);
+    white-space:nowrap;
+  }
+  .toolbar button:hover{background:var(--btn-hover); transform:translateY(-1px)}
+
+  /* Fan stage always fits because size is controlled by --fan-size */
+  #fan-stage{
+    position:relative;
+    width:var(--fan-size);
+    height:var(--fan-size);
+    perspective:1200px;
+    filter:drop-shadow(0 24px 38px rgba(0,0,0,.12)) drop-shadow(0 4px 10px rgba(0,0,0,.06));
+    touch-action:none; /* smoother gestures */
+    flex:1 1 auto;
+  }
+
   .hub{
     position:absolute; inset:8% 8% 8% 8%; border-radius:50%;
     background:
@@ -46,7 +82,9 @@
 
   .rivet{
     position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-    width:40px; height:40px; border-radius:50%;
+    width:calc(var(--fan-size) * 0.06);
+    height:calc(var(--fan-size) * 0.06);
+    border-radius:50%;
     background:
       radial-gradient(circle at 35% 35%, #ffffff 0 24%, #d9dde4 25% 50%, #aeb5c0 51% 68%, #7f8794 69% 86%, #cfd4dc 87% 100%);
     box-shadow:
@@ -59,51 +97,47 @@
 
   .swatch{
     position:absolute; top:50%; left:50%;
-    width:var(--card-w); height:var(--card-h); transform-origin:0% 100%;
+    width:var(--card-w); height:var(--card-h);
+    transform-origin:0% 100%;
     --angle:0deg;
     transform:translate(0,-100%) rotate(var(--angle));
-    border-radius:var(--card-r); display:flex; align-items:flex-end; padding:18px 16px;
-    color:#fff; font-weight:800; letter-spacing:.2px; text-shadow:0 1px 3px rgba(0,0,0,.45);
+    border-radius:var(--card-r); display:flex; align-items:flex-end; padding:calc(var(--fan-size)*0.02) calc(var(--fan-size)*0.018);
+    color:#fff; font-weight:800; letter-spacing:.2px;
+    font-size:clamp(10px, calc(var(--fan-size)*0.04), 16px);
+    text-shadow:0 1px 3px rgba(0,0,0,.45);
     transition:transform .55s var(--spring), filter .25s ease, z-index .2s ease;
     user-select:none;
-    /* paper realism */
-    box-shadow:
-      0 14px 24px rgba(15,23,42,.18),
-      0 2px 6px rgba(15,23,42,.14);
-    position:absolute;
+    box-shadow: 0 calc(var(--fan-size)*0.018) calc(var(--fan-size)*0.03) rgba(15,23,42,.18),
+                0 calc(var(--fan-size)*0.004) calc(var(--fan-size)*0.012) rgba(15,23,42,.14);
     background-image:
       linear-gradient(to bottom, rgba(255,255,255,.18), rgba(255,255,255,0) 42%),
       linear-gradient(to top, rgba(0,0,0,.10), rgba(0,0,0,0) 60%);
     background-blend-mode:overlay,normal;
-    cursor:grab;
-    overflow:hidden;
+    cursor:grab; overflow:hidden;
   }
   .swatch::before{
     content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
     box-shadow: inset 0 1.2px 0 rgba(255,255,255,.9), inset 0 -1.4px 0 rgba(0,0,0,.35);
     mix-blend-mode:soft-light;
   }
-  .swatch span{display:block; font-size:14px;}
-  .swatch.dragging{cursor:grabbing; transition:filter .25s ease, z-index .2s ease;}
+  .swatch span{display:block; font-size:clamp(9px, calc(var(--fan-size)*0.032), 14px);}
+  .swatch.dragging{cursor:grabbing;}
   .swatch.swaying{transition:transform .15s ease-out;}
   .is-top{filter:drop-shadow(0 16px 22px rgba(20,28,36,.22)) drop-shadow(0 3px 7px rgba(20,28,36,.12));}
 
   .swatch.has-image{
-    background-blend-mode:normal;
-    background-repeat:no-repeat;
-    background-position:center;
-    background-size:cover;
+    background-blend-mode:normal; background-repeat:no-repeat; background-position:center; background-size:cover;
     text-shadow:0 1px 2px rgba(0,0,0,.35);
   }
   .swatch.has-image::after{
     content:""; position:absolute; inset:-20% -60%; pointer-events:none;
     background:linear-gradient(65deg, rgba(255,255,255,0) 45%, rgba(255,255,255,.35) 50%, rgba(255,255,255,0) 55%);
     transform:translateX(-120%) rotate(0.0001deg);
-    transition:transform .9s ease;
-    filter:blur(1px);
+    transition:transform .9s ease; filter:blur(1px);
   }
   .swatch.has-image:hover::after{ transform:translateX(120%) rotate(0.0001deg); }
 
+  /* Preview overlay */
   .preview{position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:5000;}
   .preview.open{display:flex;}
   .preview-box{width:min(92vw,520px); border-radius:14px; overflow:hidden; box-shadow:0 12px 40px rgba(0,0,0,.35); background:#fff;}
@@ -111,38 +145,44 @@
   .preview-meta{padding:16px; display:flex; align-items:center; justify-content:space-between; font-weight:800;}
   .close-x{border:0; background:#111; color:#fff; padding:8px 12px; border-radius:10px; cursor:pointer;}
 
-  @media (max-width:720px){
-    #fan-container{ width:min(88vmin,560px); height:min(88vmin,560px) }
-    :root{ --card-w:150px; --card-h:250px; --card-r:10px; }
+  /* Extra-small phones: increase fit tightness */
+  @media (max-width:420px) {
+    :root{
+      --fan-size: min(96vw, 72vh);
+      --btn-pad-y: 6px; --btn-pad-x: 10px; --btn-radius: 9px; --btn-font: 11px;
+    }
+    .toolbar{gap:6px}
   }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="nav-buttons">
-    <button id="btn-open">Open Fan Deck</button>
-    <button id="btn-close">Close Fan Deck</button>
-    <button id="btn-rot-l">Rotate ◄</button>
-    <button id="btn-rot-r">Rotate ►</button>
-    <button id="btn-prev">Previous</button>
-    <button id="btn-next">Next</button>
-  </div>
-  <div id="fan-container">
-    <div class="hub"></div>
-    <div class="rivet" id="rivet" title="Drag to rotate entire deck 360°"></div>
-  </div>
-</div>
+  <div class="wrap">
+    <div class="toolbar">
+      <button id="btn-open">Open Fan Deck</button>
+      <button id="btn-close">Close Fan Deck</button>
+      <button id="btn-rot-l">Rotate ◄</button>
+      <button id="btn-rot-r">Rotate ►</button>
+      <button id="btn-prev">Previous</button>
+      <button id="btn-next">Next</button>
+    </div>
 
-<!-- preview overlay -->
-<div class="preview" id="preview">
-  <div class="preview-box">
-    <div class="preview-color" id="previewColor"></div>
-    <div class="preview-meta">
-      <div id="previewLabel">Color — #000</div>
-      <button class="close-x" id="closePreview">Close</button>
+    <div id="fan-stage">
+      <div class="hub"></div>
+      <div class="rivet" id="rivet" title="Drag to rotate entire deck 360°"></div>
+      <!-- swatches injected by JS -->
     </div>
   </div>
-</div>
+
+  <!-- preview overlay -->
+  <div class="preview" id="preview">
+    <div class="preview-box">
+      <div class="preview-color" id="previewColor"></div>
+      <div class="preview-meta">
+        <div id="previewLabel">Color — #000</div>
+        <button class="close-x" id="closePreview">Close</button>
+      </div>
+    </div>
+  </div>
 
 <script>
 /* ---- swatches ---- */
@@ -193,12 +233,12 @@ const colors=[
   { name:"Metallic Gold", code:"106", img:"https://sanscartier19.github.io/HTMLFiles/Gold.png" }
 ];
 
-const fan = document.getElementById('fan-container');
+const fan = document.getElementById('fan-stage');
 const rivet = document.getElementById('rivet');
 const cards = [];
 let isOpen = false, currentTop = 0, slotAngles = [];
 const SPREAD = 270, OFFSET = -135;
-let globalRotation = 0; // whole deck rotation
+let globalRotation = 0;
 
 const preview = document.getElementById('preview');
 const previewColor = document.getElementById('previewColor');
@@ -224,7 +264,7 @@ function relayout(){
   });
 }
 
-/* neighbor sway for feel */
+/* neighbor sway */
 function applyNeighborSway(dragEl, targetAngle, startAngle, angVel){
   const dragSlot = parseInt(dragEl.dataset.slot,10);
   const delta = wrapDeg(targetAngle - startAngle);
@@ -275,7 +315,7 @@ function createFan(){
     el.style.zIndex = 10 + i;
     fan.appendChild(el);
     cards.push(el);
-    attachDragOrbit(el, i);
+    attachDragOrbit(el);
   });
 
   bringToFront(0);
@@ -299,7 +339,7 @@ function closeFan(){
 function nextSwatch(){ if(!isOpen){openFan();return;} currentTop=(currentTop+1)%cards.length; bringToFront(currentTop); }
 function prevSwatch(){ if(!isOpen){openFan();return;} currentTop=(currentTop-1+cards.length)%cards.length; bringToFront(currentTop); }
 
-/* ===== NEW: per-swatch 360° orbit ===== */
+/* per-swatch 360° orbit */
 function attachDragOrbit(el){
   let startAngle=0;
   let displayedAngle=0, lastTargetAngle=0;
@@ -313,10 +353,8 @@ function attachDragOrbit(el){
     e.preventDefault();
     const {cx, cy} = getCenter();
     const x=e.clientX, y=e.clientY;
-    // angle relative to center, minus current global deck rotation
     const raw = normDeg(Math.atan2(y - cy, x - cx));
-    const target = wrapDeg(raw - globalRotation);       // <-- no clamp: free 360°
-    // ease toward target for smoothness
+    const target = wrapDeg(raw - globalRotation);  // free 360°
     const stiffness = 0.75;
     displayedAngle = wrapDeg(displayedAngle + wrapDeg(target - displayedAngle) * stiffness);
 
@@ -328,11 +366,10 @@ function attachDragOrbit(el){
     const angVel = wrapDeg(target - lastTargetAngle) / dt;
     lastT = t; lastTargetAngle = target;
 
-    if(!dragged){
-      const dx=Math.abs(x - (cx + Math.cos(startAngle*Math.PI/180)*10));
-      const dy=Math.abs(y - (cy + Math.sin(startAngle*Math.PI/180)*10));
-      if(dx>moveThreshold || dy>moveThreshold) dragged=true;
-    }
+    // start drag threshold
+    const dx = x - (cx + Math.cos(startAngle*Math.PI/180)*10);
+    const dy = y - (cy + Math.sin(startAngle*Math.PI/180)*10);
+    if(!dragged && (Math.abs(dx)>moveThreshold || Math.abs(dy)>moveThreshold)) dragged=true;
 
     applyNeighborSway(el, target, startAngle, angVel);
     lastA = target;
@@ -350,7 +387,6 @@ function attachDragOrbit(el){
 
     const elapsed = Date.now() - downTime;
     if(!dragged && elapsed<=clickDelay){
-      // click-only preview
       const isImg = el.classList.contains('has-image');
       previewColor.style.background = isImg ? el.style.background : (el.style.backgroundColor || '#fff');
       previewLabel.textContent = `${el.dataset.name} — #${el.dataset.code}`;
@@ -360,7 +396,7 @@ function attachDragOrbit(el){
       return;
     }
 
-    // snap to nearest slot (based on wrapped angle)
+    // snap + reorder
     const current = wrapDeg(parseFloat(el.dataset.angle));
     const toSlot = nearestSlot(current);
     const fromSlot = parseInt(el.dataset.slot,10);
@@ -420,7 +456,7 @@ function attachDragOrbit(el){
   });
 }
 
-/* deck rotation (rivet / wheel / buttons) */
+/* entire deck rotation (rivet / wheel / buttons) */
 function rotateDeck(delta){
   globalRotation = wrapDeg(globalRotation + delta);
   relayout();
@@ -446,6 +482,7 @@ function endSpin(e){ if(!spinning) return; spinning=false; rivet.releasePointerC
 window.addEventListener('pointerup', endSpin);
 window.addEventListener('pointercancel', endSpin);
 
+/* mouse wheel / trackpad */
 fan.addEventListener('wheel', (e)=>{
   e.preventDefault();
   rotateDeck(e.deltaY>0 ? 6 : -6);
@@ -453,8 +490,7 @@ fan.addEventListener('wheel', (e)=>{
 
 /* helpers */
 function nearestSlot(angleDeg){
-  // choose the slot angle closest to the provided (wrapped) angle
-  let best=0,bd=1e9; 
+  let best=0,bd=1e9;
   for(let i=0;i<slotAngles.length;i++){
     const d=Math.abs(wrapDeg(slotAngles[i]-angleDeg));
     if(d<bd){bd=d;best=i;}
