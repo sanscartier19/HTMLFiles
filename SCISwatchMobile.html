@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>SCI Fan Deck — 360 (Fast)</title>
+<style>
+  :root{
+    --fan-size: min(92vw, 70vh);
+    --card-w: calc(var(--fan-size) * 0.30);
+    --card-h: calc(var(--fan-size) * 0.48);
+    --card-r: calc(var(--fan-size) * 0.02);
+    --spring:cubic-bezier(.16,.84,.24,1.10);
+    --spread:270; --offset:-135;
+    --btn:#0a26ff; --btn-hover:#081bcc;
+    --btn-pad-y: 8px; --btn-pad-x: 12px; --btn-radius: 10px; --btn-font: 12px;
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    background:#fff; /* white background */
+  }
+
+  .wrap{
+    height:100dvh; width:100%;
+    display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+    padding:max(env(safe-area-inset-top,12px),12px) 12px 12px; gap:12px;
+    overflow:hidden;
+  }
+
+  .toolbar{display:flex; gap:8px; flex-wrap:wrap; justify-content:center}
+  .toolbar button{
+    border:0; background:var(--btn); color:#fff; padding:var(--btn-pad-y) var(--btn-pad-x);
+    border-radius:var(--btn-radius); font-weight:700; font-size:var(--btn-font); cursor:pointer;
+    transition:transform .12s ease, background .12s ease;
+    white-space:nowrap;
+  }
+  .toolbar button:hover{background:var(--btn-hover); transform:translateY(-1px)}
+
+  #fan-stage{
+    position:relative; width:var(--fan-size); height:var(--fan-size);
+    touch-action:none; /* better gestures */
+    /* Performance: avoid heavy filters/shadows */
+    will-change: transform;
+    contain: layout paint size;
+  }
+
+  /* simplified hub (no blur) */
+  .hub{
+    position:absolute; inset:8% 8% 8% 8%; border-radius:50%;
+    background: radial-gradient(circle at 40% 35%, #fff 0 15%, #f2f3f6 16% 55%, #e6e8ee 56% 100%);
+  }
+
+  .rivet{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:calc(var(--fan-size) * 0.06); height:calc(var(--fan-size) * 0.06); border-radius:50%;
+    background: radial-gradient(circle at 35% 35%, #ffffff 0 24%, #c7ced8 25% 80%, #9aa3af 81% 100%);
+    box-shadow: 0 2px 6px rgba(0,0,0,.25);
+    z-index:1000; cursor:grab;
+  }
+  .rivet:active{cursor:grabbing}
+
+  .swatch{
+    position:absolute; top:50%; left:50%;
+    width:var(--card-w); height:var(--card-h);
+    transform-origin:0% 100%;
+    --angle:0deg;
+    transform:translate(0,-100%) rotate(var(--angle));
+    border-radius:var(--card-r);
+    display:flex; align-items:flex-end;
+    padding:calc(var(--fan-size)*0.02) calc(var(--fan-size)*0.018);
+    color:#fff; font-weight:800;
+    font-size:clamp(10px, calc(var(--fan-size)*0.04), 16px);
+    text-shadow:0 1px 2px rgba(0,0,0,.35);
+    transition:transform .35s var(--spring);
+    user-select:none; cursor:grab; overflow:hidden;
+    /* lighter shadow for perf */
+    box-shadow: 0 8px 14px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.10);
+    background-image:
+      linear-gradient(to bottom, rgba(255,255,255,.16), rgba(255,255,255,0) 42%),
+      linear-gradient(to top, rgba(0,0,0,.08), rgba(0,0,0,0) 60%);
+    background-blend-mode:overlay,normal;
+    will-change: transform;
+    contain: layout paint size;
+  }
+  .swatch::before{
+    content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.8), inset 0 -1px 0 rgba(0,0,0,.3);
+  }
+  .swatch span{display:block; font-size:clamp(9px, calc(var(--fan-size)*0.032), 14px);}
+  .swatch.dragging{cursor:grabbing; transition:none}
+
+  /* Reduce heavy hover gloss to zero (perf) */
+  .swatch.has-image{ background-blend-mode:normal; background-repeat:no-repeat; background-position:center; background-size:cover; }
+
+  .preview{position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; z-index:5000;}
+  .preview.open{display:flex;}
+  .preview-box{width:min(92vw,520px); border-radius:14px; overflow:hidden; box-shadow:0 12px 40px rgba(0,0,0,.35); background:#fff;}
+  .preview-color{height:260px;}
+  .preview-meta{padding:16px; display:flex; align-items:center; justify-content:space-between; font-weight:800;}
+  .close-x{border:0; background:#111; color:#fff; padding:8px 12px; border-radius:10px; cursor:pointer;}
+
+  @media (max-width:420px) {
+    :root{ --fan-size: min(96vw, 72vh); --btn-pad-y:6px; --btn-pad-x:10px; --btn-radius:9px; --btn-font:11px; }
+    .toolbar{gap:6px}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="toolbar">
+      <button id="btn-open">Open Fan Deck</button>
+      <button id="btn-close">Close Fan Deck</button>
+      <button id="btn-rot-l">Rotate ◄</button>
+      <button id="btn-rot-r">Rotate ►</button>
+      <button id="btn-prev">Previous</button>
+      <button id="btn-next">Next</button>
+    </div>
+
+    <div id="fan-stage">
+      <div class="hub"></div>
+      <div class="rivet" id="rivet" title="Drag to rotate entire deck 360°"></div>
+    </div>
+  </div>
+
+  <!-- preview overlay -->
+  <div class="preview" id="preview">
+    <div class="preview-box">
+      <div class="preview-color" id="previewColor"></div>
+      <div class="preview-meta">
+        <div id="previewLabel">Color — #000</div>
+        <button class="close-x" id="closePreview">Close</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/*** DATA ***/
+const colors=[
+  { name:"Red", code:"316", hex:"#b11624" },
+  { name:"Terra Cotta", code:"376", hex:"#78140c" },
+  { name:"Burgundy", code:"375", hex:"#460013" },
+  { name:"Orange", code:"317", hex:"#f07317" },
+  { name:"Yellow", code:"330", hex:"#f6c431" },
+  { name:"Dark Yellow", code:"331", hex:"#e3a100" },
+  { name:"Blue", code:"915", hex:"#143d74" },
+  { name:"Pale Blue", code:"521", hex:"#345a66" },
+  { name:"Deep Blue", code:"353", hex:"#345a66" },
+  { name:"Medium Blue", code:"360", hex:"#6497b4" },
+  { name:"Aqua", code:"517", hex:"#17665f" },
+  { name:"Green", code:"453", hex:"#286e1b" },
+  { name:"Lime Green", code:"952", hex:"#86b900" },
+  { name:"Light Green", code:"446", hex:"#c5cf8d" },
+  { name:"Forest Green", code:"454", hex:"#0a3634" },
+  { name:"Purple", code:"523", hex:"#512243" },
+  { name:"Light Purple", code:"530", hex:"#8c90b2" },
+  { name:"Dark Brown", code:"939", hex:"#2b1e08" },
+  { name:"Chocolate", code:"933", hex:"#361301" },
+  { name:"Light Brown", code:"248", hex:"#af8763" },
+  { name:"Beige", code:"999", hex:"#d1ad95" },
+  { name:"Pebblestone", code:"437", hex:"#ded5ad" },
+  { name:"Almond", code:"431", hex:"#9b977b" },
+  { name:"Black", code:"459", hex:"#000000" },
+  { name:"Pale Grey", code:"306", hex:"#a0a6b2" },
+  { name:"Steel Grey", code:"365", hex:"#474647" },
+  { name:"Medium Grey", code:"663", hex:"#2d2d2d" },
+  { name:"Charcoal", code:"470", hex:"#323637" },
+  { name:"Grey", code:"305", hex:"#565c5b" },
+  { name:"Light Grey", code:"885", hex:"#7c7e7d" },
+  { name:"Silver", code:"524", hex:"#afb1ad" },
+  { name:"Super White", code:"433", hex:"#ffffff" },
+  { name:"Metallic Silver", code:"101", img:"https://sanscartier19.github.io/HTMLFiles/101%20Silver%20Metallic.png" },
+  { name:"Metallic Charcoal", code:"124", img:"https://sanscartier19.github.io/HTMLFiles/Charcoal.png" },
+  { name:"Metallic Mocha", code:"128", img:"https://sanscartier19.github.io/HTMLFiles/Mocha.png" },
+  { name:"Metallic Hot Chocolate", code:"148", img:"https://sanscartier19.github.io/HTMLFiles/HotChocolate.png" },
+  { name:"Metallic Ruby", code:"135", img:"https://sanscartier19.github.io/HTMLFiles/Ruby.png" },
+  { name:"Metallic Violet Passion", code:"116", img:"https://sanscartier19.github.io/HTMLFiles/VioletPassion.png" },
+  { name:"Metallic Blue Mist", code:"112", img:"https://sanscartier19.github.io/HTMLFiles/BlueMist.jpg" },
+  { name:"Metallic Aqua", code:"143", img:"https://sanscartier19.github.io/HTMLFiles/Aqua.png" },
+  { name:"Metallic Olive Green", code:"113", img:"https://sanscartier19.github.io/HTMLFiles/OliveGreen.png" },
+  { name:"Metallic Orange", code:"138", img:"https://sanscartier19.github.io/HTMLFiles/MetallicOrange.png" },
+  { name:"Metallic Copper", code:"129", img:"https://sanscartier19.github.io/HTMLFiles/Copper.png" },
+  { name:"Metallic Gold", code:"106", img:"https://sanscartier19.github.io/HTMLFiles/Gold.png" }
+];
+
+/*** ELEMENTS & STATE ***/
+const fan = document.getElementById('fan-stage');
+const rivet = document.getElementById('rivet');
+const cards = [];
+let isOpen = false, currentTop = 0, slotAngles = [];
+const SPREAD = 270, OFFSET = -135;
+let globalRotation = 0;
+
+const preview = document.getElementById('preview');
+const previewColor = document.getElementById('previewColor');
+const previewLabel = document.getElementById('previewLabel');
+document.getElementById('closePreview').addEventListener('click', ()=> preview.classList.remove('open'));
+preview.addEventListener('click', e=>{ if(e.target===preview) preview.classList.remove('open'); });
+
+/*** PERF HELPERS ***/
+function normDeg(rad){ let d=rad*180/Math.PI; while(d>180)d-=360; while(d<-180)d+=360; return d; }
+function wrapDeg(d){ d%=360; if(d>180) d-=360; if(d<=-180) d+=360; return d; }
+function getCenter(){ const r=fan.getBoundingClientRect(); return {cx:r.left+r.width/2, cy:r.top+r.height/2}; }
+
+/* rAF-batched relayout */
+let needFrame=false;
+function requestLayout(){ if(needFrame) return; needFrame=true; requestAnimationFrame(applyLayout); }
+function applyLayout(){
+  needFrame=false;
+  const base = `translate(0,-100%)`;
+  for(const el of cards){
+    const ang = parseFloat(el.dataset.angle) + globalRotation;
+    el.style.transform = `${base} rotate(${ang}deg)`;
+  }
+}
+
+/*** BUILD ***/
+function createFan(){
+  const step = SPREAD / (colors.length - 1);
+  slotAngles = colors.map((_,i)=> OFFSET + i*step);
+
+  colors.forEach((c,i)=>{
+    const el = document.createElement('div');
+    el.className = 'swatch';
+    if (c.img){
+      el.classList.add('has-image');
+      el.style.background = `#fff url("${c.img}") center/cover no-repeat`;
+    } else {
+      el.style.backgroundColor = c.hex || '#999';
+    }
+    el.innerHTML = `${c.name}<span>#${c.code}</span>`;
+    el.dataset.name=c.name; el.dataset.code=c.code; el.dataset.hex=c.hex||'';
+    el.dataset.slot=i; el.dataset.angle=slotAngles[i];
+    el.style.zIndex = 10 + i;
+    fan.appendChild(el);
+    cards.push(el);
+    attachDragOrbit(el);
+  });
+  bringToFront(0);
+  requestLayout();
+}
+
+function bringToFront(idx){
+  cards.forEach((el,i)=>{ el.style.zIndex = (i===idx)?999:(10+i); });
+}
+
+/*** OPEN/CLOSE ***/
+function openFan(){ isOpen = true; cards.forEach(el=> el.dataset.angle = slotAngles[+el.dataset.slot]); requestLayout(); }
+function closeFan(){ isOpen = false; cards.forEach(el=> el.dataset.angle = 0); requestLayout(); }
+function nextSwatch(){ if(!isOpen){openFan();return;} currentTop=(currentTop+1)%cards.length; bringToFront(currentTop); }
+function prevSwatch(){ if(!isOpen){openFan();return;} currentTop=(currentTop-1+cards.length)%cards.length; bringToFront(currentTop); }
+
+/*** SWAY (light / off on mobile) ***/
+const SWAY_ENABLED = !matchMedia('(max-width: 640px)').matches;
+function applyNeighborSway(){ /* no-op when disabled */ }
+if (SWAY_ENABLED){
+  window.applyNeighborSway = function(dragEl, targetAngle, startAngle, angVel){
+    const dragSlot = +dragEl.dataset.slot;
+    const delta = wrapDeg(targetAngle - startAngle);
+    const baseSway = delta * 0.18;                       // reduced
+    const speedBoost = Math.min(Math.abs(angVel)*90, 4); // reduced
+    const swayMax = 6;                                   // reduced
+    for(const el of cards){
+      if (el===dragEl) continue;
+      const dist = Math.abs(+el.dataset.slot - dragSlot);
+      if (dist===0 || dist>5){
+        continue; // let normal layout handle it
+      }
+      const falloff = Math.exp(-0.9*(dist-1));
+      const sway = Math.max(-swayMax, Math.min((baseSway + Math.sign(delta)*speedBoost)*falloff, swayMax));
+      const ang = parseFloat(el.dataset.angle)+globalRotation + sway;
+      el.style.transform = `translate(0,-100%) rotate(${ang}deg)`;
+    }
+  }
+}
+
+/*** PER-SWATCH 360° ORBIT ***/
+function attachDragOrbit(el){
+  let startAngle=0, displayedAngle=0, lastTargetAngle=0, lastT=0, lastA=0;
+  let dragged=false, downTime=0, activePointerId=null;
+  const moveThreshold=6, clickDelay=300;
+
+  const onMove = (e)=>{
+    if(!el.classList.contains('dragging')) return;
+    const {cx, cy} = getCenter();
+    const x=e.clientX, y=e.clientY;
+    const raw = normDeg(Math.atan2(y - cy, x - cx));
+    const target = wrapDeg(raw - globalRotation);
+    const stiffness = 0.75;
+    displayedAngle = wrapDeg(displayedAngle + wrapDeg(target - displayedAngle) * stiffness);
+    el.dataset.angle = displayedAngle;
+
+    const t = e.timeStamp;
+    const dt = Math.max(1, t - lastT);
+    const angVel = wrapDeg(target - lastTargetAngle) / dt;
+    lastT = t; lastTargetAngle = target;
+
+    if(!dragged){
+      const dx = x - (cx + Math.cos(startAngle*Math.PI/180)*10);
+      const dy = y - (cy + Math.sin(startAngle*Math.PI/180)*10);
+      if(Math.abs(dx)>moveThreshold || Math.abs(dy)>moveThreshold) dragged=true;
+    }
+
+    if (SWAY_ENABLED) applyNeighborSway(el, target, startAngle, angVel);
+    lastA = target;
+    requestLayout(); // rAF-batched
+  };
+
+  const onUp = ()=>{
+    if(!el.classList.contains('dragging')) return;
+    el.releasePointerCapture && el.releasePointerCapture(activePointerId);
+    el.classList.remove('dragging');
+
+    window.removeEventListener('pointermove', onMove, {passive:true});
+    window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('pointercancel', onUp);
+
+    const elapsed = Date.now() - downTime;
+    if(!dragged && elapsed<=clickDelay){
+      const isImg = el.classList.contains('has-image');
+      previewColor.style.background = isImg ? el.style.background : (el.style.backgroundColor || '#fff');
+      previewLabel.textContent = `${el.dataset.name} — #${el.dataset.code}`;
+      preview.classList.add('open');
+      requestLayout();
+      return;
+    }
+
+    // snap + reorder
+    const current = wrapDeg(parseFloat(el.dataset.angle));
+    const toSlot = nearestSlot(current);
+    const fromSlot = +el.dataset.slot;
+
+    if(toSlot !== fromSlot){
+      for(const c of cards){
+        const s = +c.dataset.slot;
+        if(c===el){
+          c.dataset.slot = toSlot;
+          c.dataset.angle = slotAngles[toSlot];
+        }else{
+          if(fromSlot < toSlot && s>fromSlot && s<=toSlot){ c.dataset.slot = s-1; c.dataset.angle = slotAngles[s-1]; }
+          if(fromSlot > toSlot && s>=toSlot && s<fromSlot){ c.dataset.slot = s+1; c.dataset.angle = slotAngles[s+1]; }
+        }
+      }
+      cards.sort((a,b)=> +a.dataset.slot - +b.dataset.slot);
+      bringToFront(cards.indexOf(el));
+    } else {
+      el.dataset.angle = slotAngles[fromSlot];
+    }
+
+    requestLayout();
+  };
+
+  el.addEventListener('pointerdown', (e)=>{
+    if(!isOpen) openFan();
+    activePointerId = e.pointerId;
+    el.setPointerCapture && el.setPointerCapture(activePointerId);
+    bringToFront(cards.indexOf(el));
+    currentTop = cards.indexOf(el);
+    el.classList.add('dragging');
+
+    startAngle = parseFloat(el.dataset.angle) || 0;
+    displayedAngle = startAngle;
+    lastTargetAngle = startAngle;
+    lastT = e.timeStamp; lastA = startAngle;
+    dragged=false; downTime=Date.now();
+
+    window.addEventListener('pointermove', onMove, {passive:true});
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  });
+}
+
+/*** WHOLE DECK ROTATION ***/
+function rotateDeck(delta){ globalRotation = wrapDeg(globalRotation + delta); requestLayout(); }
+function pointerAngleFromCenter(e){
+  const {cx, cy} = getCenter();
+  return Math.atan2(e.clientY - cy, e.clientX - cx) * 180/Math.PI;
+}
+let spinning = false, spinStartAngle = 0, spinStartGlobal = 0;
+rivet.addEventListener('pointerdown', (e)=>{
+  e.preventDefault(); spinning = true; rivet.setPointerCapture && rivet.setPointerCapture(e.pointerId);
+  spinStartAngle = pointerAngleFromCenter(e);
+  spinStartGlobal = globalRotation;
+});
+window.addEventListener('pointermove', (e)=>{
+  if(!spinning) return;
+  const a = pointerAngleFromCenter(e);
+  const delta = a - spinStartAngle;
+  globalRotation = wrapDeg(spinStartGlobal + delta);
+  requestLayout();
+}, {passive:true});
+function endSpin(e){ if(!spinning) return; spinning=false; rivet.releasePointerCapture && rivet.releasePointerCapture(e.pointerId); }
+window.addEventListener('pointerup', endSpin);
+window.addEventListener('pointercancel', endSpin);
+
+/* wheel/trackpad */
+fan.addEventListener('wheel', (e)=>{
+  e.preventDefault();
+  rotateDeck(e.deltaY>0 ? 6 : -6);
+}, {passive:false});
+
+/*** HELPERS ***/
+function nearestSlot(angleDeg){
+  let best=0,bd=1e9;
+  for(let i=0;i<slotAngles.length;i++){
+    const d=Math.abs(wrapDeg(slotAngles[i]-angleDeg));
+    if(d<bd){bd=d;best=i;}
+  }
+  return best;
+}
+
+/*** INIT ***/
+window.addEventListener('load', ()=>{
+  const step = SPREAD / (colors.length - 1);
+  slotAngles = colors.map((_,i)=> OFFSET + i*step);
+  createFan();
+  closeFan(); // start closed
+  document.getElementById('btn-open').addEventListener('click', openFan);
+  document.getElementById('btn-close').addEventListener('click', closeFan);
+  document.getElementById('btn-prev').addEventListener('click', prevSwatch);
+  document.getElementById('btn-next').addEventListener('click', nextSwatch);
+  document.getElementById('btn-rot-l').addEventListener('click', ()=> rotateDeck(-10));
+  document.getElementById('btn-rot-r').addEventListener('click', ()=> rotateDeck(10));
+});
+</script>
+</body>
+</html>
