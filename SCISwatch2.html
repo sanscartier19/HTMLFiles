@@ -3,21 +3,21 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>SCI Fan Deck — Fluid + Images</title>
+<title>SCI Fan Deck — 360 Spin + Realistic</title>
 <style>
   :root{
     --btn:#0a26ff; --btn-hover:#081bcc;
     --wrap-max:1100px;
     --card-w:190px; --card-h:310px; --card-r:12px;
     --spring:cubic-bezier(.16,.84,.24,1.10);
-    --spread:270;    /* total degrees of fan */
-    --offset:-135;   /* center the fan (-spread/2) */
+    --spread:270;         /* total degrees of fan when open */
+    --offset:-135;        /* center the fan (-spread/2) */
   }
   *{box-sizing:border-box}
   html,body{height:100%}
   body{
     margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-    background:#fff; display:flex; justify-content:center; align-items:flex-start; min-height:100vh;
+    background:#f6f7fb; display:flex; justify-content:center; align-items:flex-start; min-height:100vh;
   }
   .wrap{width:min(92vw,var(--wrap-max)); margin:80px auto; display:flex; flex-direction:column; align-items:center; gap:20px;}
   .nav-buttons{display:flex; gap:12px; flex-wrap:wrap; justify-content:center; position:relative; z-index:3000;}
@@ -29,16 +29,33 @@
   button:hover{background:var(--btn-hover); transform:translateY(-1px)}
   #fan-container{
     position:relative; width:min(78vmin,780px); height:min(78vmin,780px); perspective:1200px; z-index:100;
-    filter:drop-shadow(0 20px 30px rgba(0,0,0,.10)) drop-shadow(0 2px 6px rgba(0,0,0,.06));
+    filter:drop-shadow(0 24px 38px rgba(0,0,0,.12)) drop-shadow(0 4px 10px rgba(0,0,0,.06));
     touch-action:none;
   }
+
+  /* realistic base disc */
+  .hub{
+    position:absolute; inset:8% 8% 8% 8%; border-radius:50%;
+    background:
+      radial-gradient(closest-side, rgba(255,255,255,.10), rgba(0,0,0,.08)),
+      radial-gradient(circle at 40% 35%, #fff 0 15%, #f2f3f6 16% 50%, #e6e8ee 51% 70%, #d8dbe4 71% 99%, #c8ccd6 100%);
+    box-shadow: inset 0 30px 60px rgba(0,0,0,.08), inset 0 -20px 40px rgba(255,255,255,.5);
+    filter: blur(0.2px);
+    pointer-events:none;
+  }
+
   .rivet{
     position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-    width:34px; height:34px; border-radius:50%;
-    background:radial-gradient(circle at 35% 35%, #fff 0 25%, #d9dde4 26% 50%, #aeb5c0 51% 70%, #7f8794 71% 86%, #cfd4dc 87% 100%);
-    box-shadow:inset 0 2px 4px rgba(255,255,255,.8), inset 0 -3px 6px rgba(0,0,0,.25), 0 2px 8px rgba(0,0,0,.18);
-    z-index:1000; pointer-events:none;
+    width:40px; height:40px; border-radius:50%;
+    background:
+      radial-gradient(circle at 35% 35%, #ffffff 0 24%, #d9dde4 25% 50%, #aeb5c0 51% 68%, #7f8794 69% 86%, #cfd4dc 87% 100%);
+    box-shadow:
+      inset 0 2px 5px rgba(255,255,255,.85),
+      inset 0 -5px 10px rgba(0,0,0,.30),
+      0 8px 18px rgba(0,0,0,.22);
+    z-index:1000; cursor:grab;
   }
+  .rivet:active{cursor:grabbing}
 
   .swatch{
     position:absolute; top:50%; left:50%;
@@ -49,19 +66,30 @@
     color:#fff; font-weight:800; letter-spacing:.2px; text-shadow:0 1px 3px rgba(0,0,0,.45);
     transition:transform .55s var(--spring), filter .25s ease, z-index .2s ease;
     user-select:none;
-    /* default flat look overlays for HEX cards only (image cards disable this via .has-image) */
+    /* paper realism */
+    box-shadow:
+      0 14px 24px rgba(15,23,42,.18),
+      0 2px 6px rgba(15,23,42,.14);
+    position:absolute;
     background-image:
-      linear-gradient(to bottom, rgba(255,255,255,.16), rgba(255,255,255,0) 40%),
-      linear-gradient(to top, rgba(0,0,0,.08), rgba(0,0,0,0) 60%);
+      linear-gradient(to bottom, rgba(255,255,255,.18), rgba(255,255,255,0) 42%),
+      linear-gradient(to top, rgba(0,0,0,.10), rgba(0,0,0,0) 60%);
     background-blend-mode:overlay,normal;
     cursor:grab;
+    overflow:hidden;
+  }
+  /* subtle bevel/edge thickness */
+  .swatch::before{
+    content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+    box-shadow: inset 0 1.2px 0 rgba(255,255,255,.9), inset 0 -1.4px 0 rgba(0,0,0,.35);
+    mix-blend-mode:soft-light;
   }
   .swatch span{display:block; font-size:14px;}
   .swatch.dragging{cursor:grabbing; transition:filter .25s ease, z-index .2s ease;}
   .swatch.swaying{transition:transform .15s ease-out;}
-  .is-top{filter:drop-shadow(0 16px 20px rgba(20,28,36,.22)) drop-shadow(0 3px 6px rgba(20,28,36,.12));}
+  .is-top{filter:drop-shadow(0 16px 22px rgba(20,28,36,.22)) drop-shadow(0 3px 7px rgba(20,28,36,.12));}
 
-  /* Image-backed swatches: remove overlay so images show true; ensure full cover and base under transparencies */
+  /* Image-backed swatches show true image (no extra overlays) */
   .swatch.has-image{
     background-blend-mode:normal;
     background-repeat:no-repeat;
@@ -69,6 +97,15 @@
     background-size:cover;
     text-shadow:0 1px 2px rgba(0,0,0,.35);
   }
+  /* moving metallic glare on hover for images */
+  .swatch.has-image::after{
+    content:""; position:absolute; inset:-20% -60%; pointer-events:none;
+    background:linear-gradient(65deg, rgba(255,255,255,0) 45%, rgba(255,255,255,.35) 50%, rgba(255,255,255,0) 55%);
+    transform:translateX(-120%) rotate(0.0001deg);
+    transition:transform .9s ease;
+    filter:blur(1px);
+  }
+  .swatch.has-image:hover::after{ transform:translateX(120%) rotate(0.0001deg); }
 
   /* Preview popup */
   .preview{position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:5000;}
@@ -89,10 +126,15 @@
   <div class="nav-buttons">
     <button id="btn-open">Open Fan Deck</button>
     <button id="btn-close">Close Fan Deck</button>
+    <button id="btn-rot-l">Rotate ◄</button>
+    <button id="btn-rot-r">Rotate ►</button>
     <button id="btn-prev">Previous</button>
     <button id="btn-next">Next</button>
   </div>
-  <div id="fan-container"><div class="rivet"></div></div>
+  <div id="fan-container">
+    <div class="hub"></div>
+    <div class="rivet" id="rivet" title="Drag to rotate 360°"></div>
+  </div>
 </div>
 
 <!-- preview overlay -->
@@ -107,7 +149,7 @@
 </div>
 
 <script>
-/* ---- 44 swatches; 101 uses your PNG image ---- */
+/* ---- 44 swatches; metallic use your PNGs ---- */
 const colors=[
   { name:"Red", code:"316", hex:"#b11624" },
   { name:"Terra Cotta", code:"376", hex:"#78140c" },
@@ -142,7 +184,7 @@ const colors=[
   { name:"Silver", code:"524", hex:"#afb1ad" },
   { name:"Super White", code:"433", hex:"#ffffff" },
 
-  /* Metallic series */
+  /* Metallic series (images) */
   { name:"Metallic Silver", code:"101", img:"https://sanscartier19.github.io/HTMLFiles/101%20Silver%20Metallic.png" },
   { name:"Metallic Charcoal", code:"124", img:"https://sanscartier19.github.io/HTMLFiles/Charcoal.png" },
   { name:"Metallic Mocha", code:"128", img:"https://sanscartier19.github.io/HTMLFiles/Mocha.png" },
@@ -159,9 +201,11 @@ const colors=[
 
 /* ---- helpers ---- */
 const fan = document.getElementById('fan-container');
+const rivet = document.getElementById('rivet');
 const cards = [];
 let isOpen = false, currentTop = 0, slotAngles = [];
-const SPREAD = 270, OFFSET = -135, MIN_ANG = OFFSET, MAX_ANG = OFFSET + SPREAD;
+const SPREAD = 270, OFFSET = -135;
+let globalRotation = 0; // <-- NEW: full 360° deck rotation
 
 const preview = document.getElementById('preview');
 const previewColor = document.getElementById('previewColor');
@@ -172,25 +216,28 @@ preview.addEventListener('click', e=>{ if(e.target===preview) preview.classList.
 function clamp(v,min,max){ return Math.max(min, Math.min(max,v)); }
 function normDeg(rad){ let d=rad*180/Math.PI; while(d>180)d-=360; while(d<-180)d+=360; return d; }
 function getCenter(){ const r=fan.getBoundingClientRect(); return {cx:r.left+r.width/2, cy:r.top+r.height/2}; }
-function nearestSlot(angleDeg){ let best=0,bd=1e9; for(let i=0;i<slotAngles.length;i++){const d=Math.abs(slotAngles[i]-angleDeg); if(d<bd){bd=d;best=i;}} return best; }
+function wrapDeg(d){ d%=360; if(d<-360) d+=360; if(d>360) d-=360; return d; }
 
 function bringToFront(idx){
   cards.forEach((el,i)=>{ el.classList.toggle('is-top', i===idx); el.style.zIndex=(i===idx)?999:(10+i); });
 }
 function relayout(){
+  // base transform includes globalRotation for 360° spin
+  const base = `translate(0,-100%)`;
   cards.forEach((el)=>{
     const ang = parseFloat(el.dataset.angle);
-    el.style.setProperty('--angle', ang+'deg');
-    el.style.transform = `translate(0,-100%) rotate(${ang}deg)`;
+    const final = ang + globalRotation;
+    el.style.setProperty('--angle', final+'deg');
+    el.style.transform = `${base} rotate(${final}deg)`;
   });
 }
 
-/* ---- neighbor sway ---- */
+/* ---- neighbor sway (unchanged) ---- */
 function applyNeighborSway(dragEl, targetAngle, startAngle, angVel){
   const dragSlot = parseInt(dragEl.dataset.slot,10);
   const delta = targetAngle - startAngle;
-  const baseSway = delta * 0.25;                 // main sway factor
-  const speedBoost = clamp(Math.abs(angVel)*120, 0, 6); // pressure feel
+  const baseSway = delta * 0.25;
+  const speedBoost = clamp(Math.abs(angVel)*120, 0, 6);
   const swayMax = 10;
 
   cards.forEach((el)=>{
@@ -199,12 +246,12 @@ function applyNeighborSway(dragEl, targetAngle, startAngle, angVel){
     const dist = Math.abs(slot - dragSlot);
     if (dist===0 || dist>6){
       el.classList.remove('swaying');
-      el.style.transform = `translate(0,-100%) rotate(${el.dataset.angle}deg)`;
+      el.style.transform = `translate(0,-100%) rotate(${parseFloat(el.dataset.angle)+globalRotation}deg)`;
       return;
     }
-    const falloff = Math.exp(-0.9*(dist-1));            // exponential decay with distance
+    const falloff = Math.exp(-0.9*(dist-1));
     const sway = clamp((baseSway*falloff) + (Math.sign(delta)*speedBoost*falloff), -swayMax, swayMax);
-    const ang = parseFloat(el.dataset.angle);
+    const ang = parseFloat(el.dataset.angle)+globalRotation;
     el.classList.add('swaying');
     el.style.transform = `translate(0,-100%) rotate(${ang + sway}deg)`;
   });
@@ -212,7 +259,7 @@ function applyNeighborSway(dragEl, targetAngle, startAngle, angVel){
 function clearNeighborSway(){
   cards.forEach(el=>{
     el.classList.remove('swaying');
-    el.style.transform = `translate(0,-100%) rotate(${el.dataset.angle}deg)`;
+    el.style.transform = `translate(0,-100%) rotate(${parseFloat(el.dataset.angle)+globalRotation}deg)`;
   });
 }
 
@@ -225,7 +272,6 @@ function createFan(){
     const el = document.createElement('div');
     el.className = 'swatch';
 
-    // IMAGE support (with white base under transparent PNGs)
     if (c.img){
       el.classList.add('has-image');
       el.style.background = `#fff url("${c.img}") center/cover no-repeat`;
@@ -236,7 +282,6 @@ function createFan(){
     el.innerHTML = `${c.name}<span>#${c.code}</span>`;
     el.dataset.name=c.name; el.dataset.code=c.code; el.dataset.hex=c.hex||'';
     el.dataset.slot=i; el.dataset.angle=slotAngles[i];
-    el.style.setProperty('--angle', slotAngles[i]+'deg');
     el.style.zIndex = 10 + i;
     fan.appendChild(el);
     cards.push(el);
@@ -257,22 +302,23 @@ function closeFan(){
   isOpen = false;
   cards.forEach(el=>{
     el.dataset.angle = 0;
-    el.style.setProperty('--angle','0deg');
-    el.style.transform = `translate(0,-100%) rotate(0deg)`;
     el.classList.remove('is-top');
   });
+  relayout();
 }
 function nextSwatch(){ if(!isOpen){openFan();return;} currentTop=(currentTop+1)%cards.length; bringToFront(currentTop); }
 function prevSwatch(){ if(!isOpen){openFan();return;} currentTop=(currentTop-1+cards.length)%cards.length; bringToFront(currentTop); }
 
-/* ---- drag: hinge rotation + torsion lag + pressure/overshoot ---- */
+/* ---- drag a swatch (as before) ---- */
 function attachDragRotate(el){
   let startX=0, startY=0, startAngle=0;
   let displayedAngle=0, lastTargetAngle=0;
-  let lastT=0, lastA=0; // for angular velocity snapshot
+  let lastT=0, lastA=0;
   let dragged=false, downTime=0;
   const moveThreshold=6, clickDelay=300;
   let activePointerId=null;
+
+  const MIN_ANG = -135, MAX_ANG = 135;
 
   const onMove = (e)=>{
     if(!el.classList.contains('dragging')) return;
@@ -280,18 +326,15 @@ function attachDragRotate(el){
     const {cx, cy} = getCenter();
     const x=e.clientX, y=e.clientY;
     const raw = normDeg(Math.atan2(y - cy, x - cx));
-    const target = clamp(raw, MIN_ANG, MAX_ANG);
+    // clamp within fan spread; globalRotation already applied elsewhere
+    const target = clamp(raw - globalRotation, MIN_ANG, MAX_ANG);
 
-    // torsion lag (low-pass filter)
-    const stiffness = 0.75; // closer to 1 = stiffer
+    const stiffness = 0.75;
     displayedAngle = displayedAngle + (target - displayedAngle) * stiffness;
 
-    // render dragged card (disable transform easing during drag)
     el.style.transition = 'filter .25s ease, z-index .2s ease';
     el.dataset.angle = displayedAngle;
-    el.style.transform = `translate(0,-100%) rotate(${displayedAngle}deg)`;
 
-    // angular velocity in deg/ms
     const t = e.timeStamp;
     const dt = Math.max(1, t - lastT);
     const angVel = (target - lastTargetAngle) / dt;
@@ -304,6 +347,7 @@ function attachDragRotate(el){
 
     applyNeighborSway(el, target, startAngle, angVel);
     lastA = target;
+    relayout();
   };
 
   const onUp = ()=>{
@@ -318,9 +362,8 @@ function attachDragRotate(el){
     const elapsed = Date.now() - downTime;
     if(!dragged && elapsed<=clickDelay){
       // click-only preview
-      const img = el.style.backgroundImage && el.classList.contains('has-image');
-      if (img){
-        previewColor.style.background = el.style.backgroundImage; // not perfect for gradients, but fine
+      const isImg = el.classList.contains('has-image');
+      if (isImg){
         previewColor.style.background = el.style.background;
       } else {
         previewColor.style.background = el.style.backgroundColor || '#fff';
@@ -332,12 +375,11 @@ function attachDragRotate(el){
       return;
     }
 
-    // snap to nearest slot & reorder neighbors (real deck feel)
+    // snap to nearest slot
     const current = parseFloat(el.dataset.angle);
     const toSlot = nearestSlot(current);
     const fromSlot = parseInt(el.dataset.slot,10);
 
-    // pressure overshoot (scaled by speed)
     const w = (lastTargetAngle - lastA) / Math.max(1, (performance.now() - lastT));
     const overshoot = clamp(Math.abs(w)*180, 0, 7) * Math.sign(lastTargetAngle - startAngle);
 
@@ -360,20 +402,17 @@ function attachDragRotate(el){
 
     cards.forEach(c=> c.style.transition = 'transform .55s var(--spring), filter .25s ease, z-index .2s ease');
 
-    // animate overshoot via WAAPI if available
     const finalAngle = parseFloat(el.dataset.angle);
     clearNeighborSway();
     if (el.animate){
       const base = `translate(0,-100%)`;
       el.animate([
-        { transform: `${base} rotate(${current}deg)` },
-        { transform: `${base} rotate(${finalAngle + overshoot}deg)` },
-        { transform: `${base} rotate(${finalAngle}deg)` },
+        { transform: `${base} rotate(${current+globalRotation}deg)` },
+        { transform: `${base} rotate(${finalAngle + overshoot + globalRotation}deg)` },
+        { transform: `${base} rotate(${finalAngle + globalRotation}deg)` },
       ], { duration: 420, easing: 'cubic-bezier(.16,.84,.24,1.10)' });
-      el.style.transform = `${base} rotate(${finalAngle}deg)`;
-    } else {
-      relayout();
     }
+    relayout();
   };
 
   el.addEventListener('pointerdown', (e)=>{
@@ -397,14 +436,52 @@ function attachDragRotate(el){
   });
 }
 
+/* ---- 360° GLOBAL ROTATION CONTROLS ---- */
+function rotateDeck(delta){
+  globalRotation = wrapDeg(globalRotation + delta);
+  relayout();
+}
+function pointerAngleFromCenter(e){
+  const {cx, cy} = getCenter();
+  return Math.atan2(e.clientY - cy, e.clientX - cx) * 180/Math.PI;
+}
+let spinning = false, spinStartAngle = 0, spinStartGlobal = 0;
+rivet.addEventListener('pointerdown', (e)=>{
+  e.preventDefault(); spinning = true; rivet.setPointerCapture && rivet.setPointerCapture(e.pointerId);
+  spinStartAngle = pointerAngleFromCenter(e);
+  spinStartGlobal = globalRotation;
+});
+window.addEventListener('pointermove', (e)=>{
+  if(!spinning) return;
+  const a = pointerAngleFromCenter(e);
+  const delta = a - spinStartAngle;
+  globalRotation = wrapDeg(spinStartGlobal + delta);
+  relayout();
+});
+function endSpin(e){ if(!spinning) return; spinning=false; rivet.releasePointerCapture && rivet.releasePointerCapture(e.pointerId); }
+window.addEventListener('pointerup', endSpin);
+window.addEventListener('pointercancel', endSpin);
+
+/* Mouse wheel spin */
+fan.addEventListener('wheel', (e)=>{
+  e.preventDefault();
+  const step = (e.deltaY>0 ? 6 : -6);
+  rotateDeck(step);
+}, {passive:false});
+
 /* ---- init ---- */
+function nearestSlot(angleDeg){
+  let best=0,bd=1e9; for(let i=0;i<slotAngles.length;i++){const d=Math.abs(slotAngles[i]-angleDeg); if(d<bd){bd=d;best=i;}} return best;
+}
 window.addEventListener('load', ()=>{
   createFan();
-  setTimeout(()=> openFan(), 80); // auto open
+  closeFan(); // <-- CLOSED ON LOAD
   document.getElementById('btn-open').addEventListener('click', openFan);
   document.getElementById('btn-close').addEventListener('click', closeFan);
   document.getElementById('btn-prev').addEventListener('click', prevSwatch);
   document.getElementById('btn-next').addEventListener('click', nextSwatch);
+  document.getElementById('btn-rot-l').addEventListener('click', ()=> rotateDeck(-10));
+  document.getElementById('btn-rot-r').addEventListener('click', ()=> rotateDeck(10));
 });
 </script>
 </body>
